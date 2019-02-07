@@ -1,18 +1,25 @@
 <?php
 /*
 Plugin Name: HTTPS fixes
-Version: 2.0.0
+Version: 2.1.0
 Author: Matthew Sigley
 */
 
 // Don't verify certificates on requests to localhost
 add_filter( 'https_local_ssl_verify', '__return_false', 999 );
 
-// Don't verify certificates on requests if the cainfo file is missing
 $cainfo_file = ini_get( 'curl.cainfo' );
-if( empty( $cainfo_file ) || !file_exists( $cainfo_file ) )
+$openssl_cainfo_file = ini_get( 'openssl.cafile' );
+if( empty( $cainfo_file ) || empty( $openssl_cainfo_file ) || !file_exists( $cainfo_file ) || !file_exists( $openssl_cainfo_file ) ) {
+	// Don't verify certificates on requests if the cainfo file is missing
 	add_filter( 'https_ssl_verify', '__return_false', 999 );
-
+} else {
+	// Force Wordpress to use cainfo file in the php.ini
+	add_filter( 'http_request_args', function( $request_args ) use ( $cainfo_file ) {
+		$request_args['sslcertificates'] = $cainfo_file;
+		return $request_args;
+	}, 999 );
+}
 
 // Force HTTPS on post thumbnail urls
 function force_url_https( $url ) {
